@@ -1,9 +1,9 @@
 <template>
   <div>
-    <h1>Init game</h1>
-    <div>
-      <h2>Player 1</h2>
-      <div class="grid grid-cols-1 gap-6">
+    <h1 class="h1">Init game</h1>
+    <div class="w-full max-w-screen-lg mx-auto">
+      <h2 class="h2">Player 1</h2>
+      <div class="grid grid-cols-1 gap-3">
         <label class="block">
           <span class="text-gray-700">Contract address</span>
           <input
@@ -18,8 +18,8 @@
         </label>
       </div>
 
-      <h2>Player 2</h2>
-      <div class="grid grid-cols-1 gap-6">
+      <h2 class="h2">Player 2</h2>
+      <div class="grid grid-cols-1 gap-3">
         <label class="block">
           <span class="text-gray-700">Contract address</span>
           <input
@@ -34,8 +34,18 @@
         </label>
       </div>
 
-      <p v-if="inProgress">...</p>
-      <button @click="clickStartGame" :disabled="inProgress">Start Game</button>
+      <button
+        @click="clickStartGame"
+        :disabled="inProgress"
+        class="button mt-5 w-52 h-10"
+      >
+        <div v-if="!inProgress">Start Game</div>
+        <div v-else class="flex justify-center items-center">
+          <div
+            class="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-900"
+          ></div>
+        </div>
+      </button>
     </div>
   </div>
 </template>
