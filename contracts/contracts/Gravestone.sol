@@ -70,13 +70,15 @@ contract Gravestone is
      *
      * - the caller must have the `MINTER_ROLE`.
      */
-    function mint(address to) public virtual {
+    function mint(address to) public virtual returns (uint256) {
         require(hasRole(MINTER_ROLE, _msgSender()), "ERC721PresetMinterPauserAutoId: must have minter role to mint");
 
         // We cannot just use balanceOf to create the new tokenId because tokens
         // can be burned (destroyed), so we need a separate counter.
-        _mint(to, _tokenIdTracker.current());
+        uint256 tokenId = _tokenIdTracker.current();
+        _mint(to, tokenId);
         _tokenIdTracker.increment();
+        return tokenId;
     }
 
     /**

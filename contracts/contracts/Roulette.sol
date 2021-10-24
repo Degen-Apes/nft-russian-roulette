@@ -1,11 +1,11 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
-import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
+import "contracts/Gravestone.sol";
 
 contract Roulette is VRFConsumerBase {
     using Counters for Counters.Counter;
@@ -14,7 +14,7 @@ contract Roulette is VRFConsumerBase {
     Counters.Counter public gameIds;
     uint32 countdownTime = 7 days;
     address burnAddress = 0x000000000000000000000000000000000000dEaD;
-    ERC721 gravestoneToken;
+    Gravestone gravestoneToken;
 
     // CHAINLINK STUFF
     uint256 private constant ROLL_IN_PROGRESS = 42;
@@ -34,7 +34,7 @@ contract Roulette is VRFConsumerBase {
     );
     event ChallengeAccepted(uint256 gameId);
     event ChallengerRegretted(uint256 gameId);
-    event PulledTrigger(IERC721 tokenContract, uint256 tokenId, uint256 gameId, bool survived);
+    event PulledTrigger(IERC721 tokenContract, uint256 tokenId, uint256 gameId, bool survived, uint256 gravestoneId);
 
     // ======= STRUCTS ========
 
@@ -76,7 +76,7 @@ contract Roulette is VRFConsumerBase {
      * LINK token address:                0x01BE23585060835E02B77ef475b0Cc51aA1e0709
      * Key Hash: 0x2ed0feb3e7fd2022120aa84fab1945545a9f2ffc9076fd6156fa96eaff4c1311
      */
-    constructor(ERC721 gravestoneToken_)
+    constructor(Gravestone gravestoneToken_)
         VRFConsumerBase(
             0xb3dCcb4Cf7a26f6cf6B120Cf5A73875B7BBc655B, // VRF Coordinator
             0x01BE23585060835E02B77ef475b0Cc51aA1e0709  // LINK Token
@@ -218,14 +218,14 @@ contract Roulette is VRFConsumerBase {
                 game.player2Survived = true;
                 tokenContract.safeTransferFrom(address(this), burnAddress, game.tokenId1);
                 game.state = GameState.PLAYER2AWAITRESULT;
-                // mintGravestone();
-                emit PulledTrigger(game.tokenAddress1, game.tokenId1, gameId, false);
+                uint256 tokenId = _mintGravestone(game.player1);
+                emit PulledTrigger(game.tokenAddress1, game.tokenId1, gameId, false, tokenId);
             } else {
                 game.player1Survived = true;
                 tokenContract.safeTransferFrom(address(this), game.player1, game.tokenId1);
                 game.state = GameState.TURNOFPLAYER2;
                 // mintReward();
-                emit PulledTrigger(game.tokenAddress1, game.tokenId1, gameId, true);
+                emit PulledTrigger(game.tokenAddress1, game.tokenId1, gameId, true, 0);
             }
         } else if (game.state == GameState.PLAYER2AWAITRESULT) {
             require(msg.sender == game.player2);
@@ -234,13 +234,13 @@ contract Roulette is VRFConsumerBase {
                 tokenContract.safeTransferFrom(address(this), game.player2, game.tokenId2);
                 game.state = GameState.ENDED;
                 // mintReward();
-                emit PulledTrigger(game.tokenAddress2, game.tokenId2, gameId, true);
+                emit PulledTrigger(game.tokenAddress2, game.tokenId2, gameId, true, 0);
             } else {
                 game.player2Survived = false;
                 tokenContract.safeTransferFrom(address(this), burnAddress, game.tokenId2);
                 game.state = GameState.ENDED;
-                // mintGravestone();
-                emit PulledTrigger(game.tokenAddress2, game.tokenId2, gameId, false);
+                uint256 tokenId = _mintGravestone(game.player2);
+                emit PulledTrigger(game.tokenAddress2, game.tokenId2, gameId, false, tokenId);
             }
         }
     }
@@ -265,6 +265,10 @@ contract Roulette is VRFConsumerBase {
         return (game.countdownTimer < block.timestamp);
     }
 
+    function _mintGravestone(address recipient) internal returns (uint256) {
+        return gravestoneToken.mint(recipient);
+    }
+
     /**
      * Requests randomness
      */
@@ -284,6 +288,15 @@ contract Roulette is VRFConsumerBase {
     function provideRandomnessHardcoded(bytes32 reqId) public {
         uint rand = uint(keccak256(abi.encodePacked(msg.sender, block.timestamp)));
         fulfillRandomness(reqId, rand % 6);
+    }
+
+    /**
+     * Debug helpers
+    */
+
+    function killEvent(address player, address tokenContract, uint256 tokenId, uint256 gameId) public {
+        uint256 gravestoneTokenId = _mintGravestone(player);
+        emit PulledTrigger(IERC721(tokenContract), tokenId, gameId, false, gravestoneTokenId);
     }
 
 }

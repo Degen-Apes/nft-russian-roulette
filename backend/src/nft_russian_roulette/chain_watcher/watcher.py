@@ -54,4 +54,5 @@ class Watcher:
                     game_id=reciept.args.gameId,
                     token_contract_address=reciept.args.tokenContract,
                     token_id=reciept.args.tokenId,
+                    gravestone_id=reciept.args.gravestoneId,
                 )

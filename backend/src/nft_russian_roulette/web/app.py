@@ -1,7 +1,8 @@
 from typing import Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Path
-from nft_russian_roulette.constants import (IMAGE_GRAVESTONE_PATH,
+from nft_russian_roulette.constants import (GRAVESTONE_REDIS_KEY_TEMPLATE,
+                                            IMAGE_GRAVESTONE_PATH,
                                             IMAGE_SURVIVED_PATH,
                                             SURVIVED_TAG_REDIS_KEY_TEMPLATE)
 from nft_russian_roulette.utils import get_redis_from_env
@@ -67,6 +68,16 @@ def nftag(
 @app.get("/gravestone/{token_id}")
 def gravestone(token_id: str = Path(...), request: Request = ...):
     redis = get_redis()
+    gravestone_key = GRAVESTONE_REDIS_KEY_TEMPLATE.format(gravestone_id=token_id)
+    gravestone = redis.hgetall(gravestone_key)
+    if not gravestone:
+        raise HTTPException(status_code=404, detail="Gravestone doesn't exist")
+    return {
+        "description": "NFT Russian Roulette Gravestone",
+        "image": f"{request.url.scheme}://{request.url.netloc}/image/gravestone",
+        "name": f"NFTRR Gravestone for {gravestone[b'token_contract_address']}:{gravestone[b'token_id']}",
+        "attributes": [],
+    }
 
 
 @app.get("/image/{kind}")
