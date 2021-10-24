@@ -13,7 +13,6 @@ contract Roulette is VRFConsumerBase {
     Counters.Counter private gameIds;
     uint32 countdownTime = 7 days;
     address burnAddress = 0x0000000000000000000000000000000000000000;
-    uint256 rand; // TODO: Remove when chainlink is implemented
     // CHAINLINK STUFF
     bytes32 internal keyHash;
     uint256 internal fee;
@@ -45,6 +44,7 @@ contract Roulette is VRFConsumerBase {
         bool player2Survived;
         GameState state;
         uint32 countdownTimer;
+        uint256 randomValue;
     }
 
     // ======== ENUMS ==========
@@ -129,6 +129,7 @@ contract Roulette is VRFConsumerBase {
             theirTokenId,
             true,
             GameState.CHALLENGED,
+            0,
             0
         );
         gameIds.increment();
@@ -162,11 +163,11 @@ contract Roulette is VRFConsumerBase {
         Game storage game = games[gameId];
         if (game.state == GameState.TURNOFPLAYER1) {
             require(msg.sender == game.player1);
-            rand = uint256(keccak256(abi.encodePacked(msg.sender, block.timestamp))) % 10;
+            game.randomValue = uint256(keccak256(abi.encodePacked(msg.sender, block.timestamp))) % 10;
             game.state = GameState.PLAYER1AWAITRESULT;
         } else if (game.state == GameState.TURNOFPLAYER2) {
             require(msg.sender == game.player2);
-            rand = uint256(keccak256(abi.encodePacked(msg.sender, block.timestamp))) % 10;
+            game.randomValue = uint256(keccak256(abi.encodePacked(msg.sender, block.timestamp))) % 10;
             game.state = GameState.PLAYER2AWAITRESULT;
         } else {
             revert("Function can't be called in current state");
@@ -179,7 +180,7 @@ contract Roulette is VRFConsumerBase {
         if (game.state == GameState.PLAYER1AWAITRESULT) {
             require(msg.sender == game.player1);
             IERC721 tokenContract = game.tokenAddress1;
-            if (rand < 5) {
+            if (game.randomValue < 5) {
                 game.player1Survived = false;
                 game.player2Survived = true;
                 tokenContract.safeTransferFrom(msg.sender, burnAddress, game.tokenId1);
@@ -196,7 +197,7 @@ contract Roulette is VRFConsumerBase {
         } else if (game.state == GameState.PLAYER2AWAITRESULT) {
             require(msg.sender == game.player2);
             IERC721 tokenContract = game.tokenAddress2;
-            if (game.player2Survived || rand > 4) {
+            if (game.player2Survived || game.randomValue > 4) {
                 tokenContract.safeTransferFrom(msg.sender, game.player2, game.tokenId2);
                 game.state = GameState.ENDED;
                 // mintReward();
