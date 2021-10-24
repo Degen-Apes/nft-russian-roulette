@@ -1,3 +1,3 @@
 export const chainID = 4;
 export const rouletteContractAddress =
-  "0x1212704A86e946A2D64D3213c53Ec53B57C3320f";
+  "0xa4E6cB6FAD087f63804595BC76BEbE62079a17dA";

@@ -48,6 +48,7 @@ export default {
         this.tokenID
       );
       this.src = getSourceURL(metadata);
+      console.log(this.tokenID);
     },
   },
 };
