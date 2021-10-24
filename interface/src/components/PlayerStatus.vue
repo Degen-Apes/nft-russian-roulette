@@ -131,6 +131,7 @@ export default {
       }
     },
     async pullTrigger() {
+      console.log(this.gameID);
       const provider = new ethers.providers.Web3Provider(window.ethereum);
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(
