@@ -42,6 +42,10 @@ import PlayerStatus, { PLAYER_STATE } from "./PlayerStatus.vue";
 import ConnectBtn from "./ConnectBtn.vue";
 import NFT from "./NFT.vue";
 
+export const GAME_STATE = {
+  CHALLENGED: 0,
+};
+
 export default {
   name: "GameStatusPage",
   components: {
@@ -95,12 +99,36 @@ export default {
       }
       return this.gameState.tokenId2;
     },
+
     player1State() {
-      return PLAYER_STATE.WAITING_FOR_ACCEPTANCE;
+      switch (this.gameState) {
+        case GAME_STATE.CHALLENGED:
+          return PLAYER_STATE.WAITING_FOR_OPPONENT;
+        case GAME_STATE.TURN_OF_PLAYER1:
+          return PLAYER_STATE.WAITING_FOR_TRIGGER;
+        case GAME_STATE.PLAYER1_AWAIT_RANDOMNESS:
+          return PLAYER_STATE.WAITING_FOR_RANDOMNESS;
+        case GAME_STATE.TURN_OF_PLAYER2:
+          return PLAYER_STATE.WAITING_FOR_OPPONENT;
+        case GAME_STATE.PLAYER2_AWAIT_RANDOMNESS:
+          return PLAYER_STATE.WAITING_FOR_OPPONENT;
+      }
     },
     player2State() {
-      return PLAYER_STATE.WAITING_FOR_TRIGGER;
+      switch (this.gameState) {
+        case PLAYER_STATE.CHALLENGED:
+          return PLAYER_STATE.WAITING_FOR_ACCEPTANCE;
+        case GAME_STATE.TURN_OF_PLAYER1:
+          return PLAYER_STATE.WAITING_FOR_OPPONENT;
+        case GAME_STATE.PLAYER2_AWAIT_RANDOMNESS:
+          return PLAYER_STATE.WAITING_FOR_OPPONENT;
+        case GAME_STATE.TURN_OF_PLAYER2:
+          return PLAYER_STATE.WAITING_FOR_TRIGGER;
+        case GAME_STATE.PLAYER2_AWAIT_RANDOMNESS:
+          return PLAYER_STATE.WAITING_FOR_RANDOMNESS;
+      }
     },
+
     async userAddress() {
       if (!this.signer) {
         return null;

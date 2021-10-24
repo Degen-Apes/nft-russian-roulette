@@ -42,6 +42,7 @@
 <script>
 import { ethers } from "ethers";
 import erc721ABI from "../assets/erc721ABI.json";
+import rouletteABI from "../assets/rouletteABI.json";
 import * as config from "../config.js";
 import Btn from "./Btn.vue";
 
@@ -120,7 +121,14 @@ export default {
         this.initTransferCallData
       );
       const receipt = await tx.wait();
-      console.log(receipt);
+
+      const rouletteContract = new ethers.Contract(
+        config.rouletteContractAddress,
+        rouletteABI,
+        signer
+      );
+      const event = rouletteContract.interface.parseLog(receipt.logs[2]);
+      this.$router.push("/status/" + event.args.gameId.toString());
     },
   },
 };
