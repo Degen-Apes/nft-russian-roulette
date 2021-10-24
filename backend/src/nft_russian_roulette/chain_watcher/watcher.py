@@ -27,15 +27,15 @@ class Watcher:
         self.contract = web3.eth.contract(abi=contract_abi, address=contract_address)
 
     def watch_forever(self):
+        log.info("Starting filter polling")
         filter: Filter = getattr(self.contract.events, ROULETTE_TRIGGER_EVENT).createFilter(
             fromBlock=0
         )
         while True:
             entries = filter.get_new_entries()
-            log.info("Querying filter", type=ROULETTE_TRIGGER_EVENT, entries=len(entries))
             if entries:
                 self.handle_results(entries)
-            time.sleep(3)
+            time.sleep(5)
 
     def handle_results(self, reciepts: list[LogReceipt]) -> None:
         for reciept in reciepts:

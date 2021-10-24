@@ -1,1 +1,4 @@
 /contracts/node_modules/
+/interface/node_modules/
+docker/data/
+docker/.env
