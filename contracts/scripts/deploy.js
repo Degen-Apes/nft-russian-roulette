@@ -17,7 +17,7 @@ async function main() {
     await grantTx.wait();
     console.log('Minter role granted to Roulette');
 
-    const emitTx = await roulette.killEvent("0x00A33749a231f2e9c10deFE83403a67148D38438", "0x0000000000000000000000000000000000000001", 1, 1);
+    const emitTx = await roulette.killEvent("0x1230000000000000000000000000000000000000", "0x0000000000000000000000000000000000000001", 1, 1);
     await emitTx.wait();
 
     console.log('Gravestone minted and Event emitted');
