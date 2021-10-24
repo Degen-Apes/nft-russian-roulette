@@ -175,11 +175,11 @@ contract Roulette is VRFConsumerBase {
             game.state = GameState.PLAYER1AWAITRESULT;
         } else if (game.state == GameState.TURNOFPLAYER2) {
             require(msg.sender == game.player2);
-            require(s_results[game.player1] == 0, "Already rolled");
+            require(s_results[game.player2] == 0, "Already rolled");
 
             requestId = requestRandomness(keyHash, fee);
-            s_rollers[requestId] = game.player1;
-            s_results[game.player1] = ROLL_IN_PROGRESS;
+            s_rollers[requestId] = game.player2;
+            s_results[game.player2] = ROLL_IN_PROGRESS;
 
             game.state = GameState.PLAYER2AWAITRESULT;
         } else {
@@ -214,13 +214,13 @@ contract Roulette is VRFConsumerBase {
             if (!didPlayerSurvive(gameId, 0)) {
                 game.player1Survived = false;
                 game.player2Survived = true;
-                tokenContract.safeTransferFrom(msg.sender, burnAddress, game.tokenId1);
+                tokenContract.safeTransferFrom(address(this), burnAddress, game.tokenId1);
                 game.state = GameState.PLAYER2AWAITRESULT;
                 // mintGravestone();
                 emit PulledTrigger(game.tokenAddress1, game.tokenId1, gameId, false);
             } else {
                 game.player1Survived = true;
-                tokenContract.safeTransferFrom(msg.sender, game.player1, game.tokenId1);
+                tokenContract.safeTransferFrom(address(this), game.player1, game.tokenId1);
                 game.state = GameState.TURNOFPLAYER2;
                 // mintReward();
                 emit PulledTrigger(game.tokenAddress1, game.tokenId1, gameId, true);    
@@ -229,13 +229,13 @@ contract Roulette is VRFConsumerBase {
             require(msg.sender == game.player2);
             IERC721 tokenContract = game.tokenAddress2;
             if (game.player2Survived || didPlayerSurvive(gameId, 1)) {
-                tokenContract.safeTransferFrom(msg.sender, game.player2, game.tokenId2);
+                tokenContract.safeTransferFrom(address(this), game.player2, game.tokenId2);
                 game.state = GameState.ENDED;
                 // mintReward();
                 emit PulledTrigger(game.tokenAddress2, game.tokenId2, gameId, true);  
             } else {
                 game.player2Survived = false;
-                tokenContract.safeTransferFrom(msg.sender, burnAddress, game.tokenId2);
+                tokenContract.safeTransferFrom(address(this), burnAddress, game.tokenId2);
                 game.state = GameState.ENDED;
                 // mintGravestone();
                 emit PulledTrigger(game.tokenAddress2, game.tokenId2, gameId, false);
@@ -277,6 +277,11 @@ contract Roulette is VRFConsumerBase {
     function fulfillRandomness(bytes32 requestId, uint256 randomness) internal override {
         uint256 d6Value = randomness % 6;
         s_results[s_rollers[requestId]] = d6Value;
+    }
+
+    function provideRandomnessHardcoded(bytes32 reqId) public {
+        uint rand = uint(keccak256(abi.encodePacked(msg.sender, block.timestamp)));
+        fulfillRandomness(reqId, rand % 6);
     }
     
 }
