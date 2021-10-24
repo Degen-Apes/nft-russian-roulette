@@ -170,7 +170,6 @@ contract Roulette is VRFConsumerBase {
         Game storage game = games[gameId];
         if (game.state == GameState.TURNOFPLAYER1) {
             require(msg.sender == game.player1);
-            require(s_results[game.player1] == 0, "Already rolled");
 
             requestId = requestRandomness(keyHash, fee);
             s_rollers[requestId] = game.player1;
@@ -179,7 +178,6 @@ contract Roulette is VRFConsumerBase {
             game.state = GameState.PLAYER1AWAITRESULT;
         } else if (game.state == GameState.TURNOFPLAYER2) {
             require(msg.sender == game.player2);
-            require(s_results[game.player2] == 0, "Already rolled");
 
             requestId = requestRandomness(keyHash, fee);
             s_rollers[requestId] = game.player2;
