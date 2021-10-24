@@ -13,7 +13,7 @@ contract Roulette is VRFConsumerBase {
     // ======= VARIABLES ======
     Counters.Counter public gameIds;
     uint32 countdownTime = 7 days;
-    address burnAddress = 0x0000000000000000000000000000000000000000;
+    address burnAddress = 0x000000000000000000000000000000000000dEaD;
     ERC721 gravestoneToken;
 
     // CHAINLINK STUFF
