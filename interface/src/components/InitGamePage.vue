@@ -34,18 +34,7 @@
         </label>
       </div>
 
-      <button
-        @click="clickStartGame"
-        :disabled="inProgress"
-        class="button mt-5 w-52 h-10"
-      >
-        <div v-if="!inProgress">Start Game</div>
-        <div v-else class="flex justify-center items-center">
-          <div
-            class="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-900"
-          ></div>
-        </div>
-      </button>
+      <Btn @click="clickStartGame" :inProgress="inProgress">Start game</Btn>
     </div>
   </div>
 </template>
@@ -53,10 +42,15 @@
 <script>
 import { ethers } from "ethers";
 import erc721ABI from "../assets/erc721ABI.json";
+import rouletteABI from "../assets/rouletteABI.json";
 import * as config from "../config.js";
+import Btn from "./Btn.vue";
 
 export default {
   name: "InitGamePage",
+  components: {
+    Btn,
+  },
 
   data() {
     return {
@@ -127,7 +121,14 @@ export default {
         this.initTransferCallData
       );
       const receipt = await tx.wait();
-      console.log(receipt);
+
+      const rouletteContract = new ethers.Contract(
+        config.rouletteContractAddress,
+        rouletteABI,
+        signer
+      );
+      const event = rouletteContract.interface.parseLog(receipt.logs[2]);
+      this.$router.push("/status/" + event.args.gameId.toString());
     },
   },
 };

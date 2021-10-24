@@ -4,7 +4,7 @@ import GameStatusPage from "./components/GameStatusPage.vue";
 
 const routes = [
   { path: "/", component: InitGamePage },
-  { path: "/status", component: GameStatusPage },
+  { path: "/status/:gameID", component: GameStatusPage },
 ];
 
 export const router = createRouter({

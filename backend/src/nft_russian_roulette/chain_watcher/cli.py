@@ -29,13 +29,15 @@ def main(
     redis_db: int,
     verbose: bool = False,
 ):
+    redis = Redis(host=redis_host, port=redis_port, db=redis_db)
+    redis.flushall()
     try:
         web3 = Web3(WebsocketProvider(web3_ws_url))
         watcher = Watcher(
             web3=web3,
             contract_address=to_checksum_address(contract_address),
             contract_abi=get_contract_abi(Contract.ROULETTE),
-            queue=Queue(connection=Redis(host=redis_host, port=redis_port, db=redis_db)),
+            queue=Queue(connection=redis),
         )
         watcher.watch_forever()
     except NFTRRException as ex:
