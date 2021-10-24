@@ -14,9 +14,11 @@ contract Roulette is VRFConsumerBase {
     uint32 countdownTime = 7 days;
     address burnAddress = 0x0000000000000000000000000000000000000000;
     // CHAINLINK STUFF
+    uint256 private constant ROLL_IN_PROGRESS = 42;
     bytes32 internal keyHash;
     uint256 internal fee;
-    uint256 public randomResult;
+    mapping(bytes32 => address) private s_rollers;
+    mapping(address => uint256) private s_results;
 
     // ======= EVENTS =========
 
@@ -44,7 +46,6 @@ contract Roulette is VRFConsumerBase {
         bool player2Survived;
         GameState state;
         uint32 countdownTimer;
-        uint256 randomValue;
     }
 
     // ======== ENUMS ==========
@@ -74,8 +75,8 @@ contract Roulette is VRFConsumerBase {
      */
     constructor() 
         VRFConsumerBase(
-            0xdD3782915140c8f3b190B5D67eAc6dc5760C46E9, // VRF Coordinator
-            0xa36085F69e2889c224210F603D836748e7dC0088  // LINK Token
+            0xdD3782915140c8f3b190B5D67eAc6dc5760C46E9, // VRF Coordinator 
+            0x01BE23585060835E02B77ef475b0Cc51aA1e0709  // LINK Token
         )
     {
         keyHash = 0x6c3699283bda56ad74f6b855546325b68d482e983852a7a82979cc4807b641f4;
@@ -107,8 +108,10 @@ contract Roulette is VRFConsumerBase {
                 IERC721(_theirTokenAddress),
                 _theirTokenId
             );
-        } //TODO: REVERT?
-        return bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"));
+        } else {
+            revert("Wrong input for data");
+        }
+        return 0x150b7a02;
     }
 
     function startGame(
@@ -129,7 +132,6 @@ contract Roulette is VRFConsumerBase {
             theirTokenId,
             true,
             GameState.CHALLENGED,
-            0,
             0
         );
         gameIds.increment();
@@ -159,20 +161,49 @@ contract Roulette is VRFConsumerBase {
         emit ChallengeAccepted(gameId);
     }
 
-    function pulltrigger(uint gameId) public {
+    function pulltrigger(uint gameId) public returns (bytes32 requestId) {       
+        require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK to pay fee");
         Game storage game = games[gameId];
         if (game.state == GameState.TURNOFPLAYER1) {
             require(msg.sender == game.player1);
-            game.randomValue = uint256(keccak256(abi.encodePacked(msg.sender, block.timestamp))) % 10;
+            require(s_results[game.player1] == 0, "Already rolled");
+
+            requestId = requestRandomness(keyHash, fee);
+            s_rollers[requestId] = game.player1;
+            s_results[game.player1] = ROLL_IN_PROGRESS;
+
             game.state = GameState.PLAYER1AWAITRESULT;
         } else if (game.state == GameState.TURNOFPLAYER2) {
             require(msg.sender == game.player2);
-            game.randomValue = uint256(keccak256(abi.encodePacked(msg.sender, block.timestamp))) % 10;
+            require(s_results[game.player1] == 0, "Already rolled");
+
+            requestId = requestRandomness(keyHash, fee);
+            s_rollers[requestId] = game.player1;
+            s_results[game.player1] = ROLL_IN_PROGRESS;
+
             game.state = GameState.PLAYER2AWAITRESULT;
         } else {
             revert("Function can't be called in current state");
         }
-        // TODO: Implement chainlink stuff
+    }
+
+    function didPlayerSurvive(uint256 gameId, uint256 playerId) public view returns (bool) {
+        Game storage game = games[gameId];
+        address player;
+        if (playerId == 0) {
+            player = game.player1;
+        } else if (playerId == 1) {
+            player = game.player2;
+        } else {revert("Not a valid player ID");}
+
+        require(s_results[player] != 42, "Randomness not yet received");
+        uint256 rand = s_results[player];
+        if (rand < 3) {
+            return false;
+        } else {
+            return true;
+        }     
+
     }
 
     function evaluateOutcome(uint gameId) public {
@@ -180,7 +211,7 @@ contract Roulette is VRFConsumerBase {
         if (game.state == GameState.PLAYER1AWAITRESULT) {
             require(msg.sender == game.player1);
             IERC721 tokenContract = game.tokenAddress1;
-            if (game.randomValue < 5) {
+            if (!didPlayerSurvive(gameId, 0)) {
                 game.player1Survived = false;
                 game.player2Survived = true;
                 tokenContract.safeTransferFrom(msg.sender, burnAddress, game.tokenId1);
@@ -197,7 +228,7 @@ contract Roulette is VRFConsumerBase {
         } else if (game.state == GameState.PLAYER2AWAITRESULT) {
             require(msg.sender == game.player2);
             IERC721 tokenContract = game.tokenAddress2;
-            if (game.player2Survived || game.randomValue > 4) {
+            if (game.player2Survived || didPlayerSurvive(gameId, 1)) {
                 tokenContract.safeTransferFrom(msg.sender, game.player2, game.tokenId2);
                 game.state = GameState.ENDED;
                 // mintReward();
@@ -244,7 +275,8 @@ contract Roulette is VRFConsumerBase {
      * Callback function used by VRF Coordinator
      */
     function fulfillRandomness(bytes32 requestId, uint256 randomness) internal override {
-        randomResult = randomness;
+        uint256 d6Value = randomness % 6;
+        s_results[s_rollers[requestId]] = d6Value;
     }
     
 }
