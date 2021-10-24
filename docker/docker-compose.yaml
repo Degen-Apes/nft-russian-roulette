@@ -1,0 +1,69 @@
+version: "3.6"
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/backend.Dockerfile
+    image: backend
+    ports:
+      - 8000:8000
+    command:
+      - uvicorn
+      - --host
+      - 0.0.0.0
+      - nft_russian_roulette.web.app:app
+    depends_on:
+      - redis
+      - caddy
+    labels:
+      caddy: api.${DOMAIN}
+      caddy.reverse_proxy: "{{upstreams 8000}}"
+
+  chain_watcher:
+    image: backend
+    environment:
+      NFTRR_CONTRACT_ADDRESS: ${ROULETTE_ADDRESS}
+      NFTRR_WEB3_WS_URL: ${WEB3_WS_URL}
+      NFTRR_REDIS_HOST: redis
+    command:
+      - python
+      - -m
+      - nft_russian_roulette.chain_watcher
+    depends_on:
+      - redis
+
+  worker:
+    image: backend
+    command:
+      - rq
+      - worker
+      - --url
+      - redis://redis
+    depends_on:
+      - redis
+
+  redis:
+    image: redis
+
+  web:
+    build:
+      context: ..
+      dockerfile: docker/interface.Dockerfile
+    ports:
+      - 3000:3000
+    depends_on:
+      - caddy
+    labels:
+      caddy: ${DOMAIN}
+      caddy.reverse_proxy: "{{upstreams 3000}}"
+
+  caddy:
+    image: lucaslorentz/caddy-docker-proxy:ci-alpine
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./data/caddy:/data
+    restart: unless-stopped
