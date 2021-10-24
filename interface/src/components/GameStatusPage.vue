@@ -1,16 +1,27 @@
 <template>
   <div class="w-full max-w-screen-lg mx-auto">
     <h1 class="h1">Game {{ $route.params.gameID }}</h1>
-    <div class="grid grid-cols-2 items-center gap-6 px-6 mx-auto">
+    <div
+      class="
+        grid grid-cols-2
+        items-center
+        justify-items-center
+        gap-6
+        px-6
+        mx-auto
+      "
+    >
       <h2 class="h2 text-center">Player 1</h2>
       <h2 class="h2 text-center">Player 2</h2>
       <NFT
         :contractAddress="player1TokenContractAddress"
         :tokenID="player1TokenID"
+        :isDead="player1Survived === false"
       />
       <NFT
         :contractAddress="player2TokenContractAddress"
         :tokenID="player2TokenID"
+        :isDead="player2Survived === false"
       />
       <PlayerStatus
         :playerIndex="1"
@@ -170,6 +181,8 @@ export default {
           return;
         }
         this.gameState = null;
+        this.player1Survived = null;
+        this.player2Survived = null;
         this.gameID = this.$route.params.gameID;
         const provider = new ethers.providers.Web3Provider(window.ethereum);
         const contract = new ethers.Contract(
@@ -178,21 +191,25 @@ export default {
           provider
         );
         this.gameState = await contract.games(this.gameID);
-        try {
-          this.player1Survived = await contract.didPlayerSurvive(
-            this.gameID,
-            0
-          );
-        } catch {
-          this.player1Survived = null;
+        if (this.gameState.state >= GAME_STATE.PLAYER1_AWAIT_RANDOMNESS) {
+          try {
+            this.player1Survived = await contract.didPlayerSurvive(
+              this.gameID,
+              0
+            );
+          } catch {
+            this.player1Survived = null;
+          }
         }
-        try {
-          this.player2Survived = await contract.didPlayerSurvive(
-            this.gameID,
-            1
-          );
-        } catch {
-          this.player2Survived = null;
+        if (this.gameState.state >= GAME_STATE.PLAYER1_AWAIT_RANDOMNESS) {
+          try {
+            this.player2Survived = await contract.didPlayerSurvive(
+              this.gameID,
+              1
+            );
+          } catch {
+            this.player2Survived = null;
+          }
         }
       },
     },

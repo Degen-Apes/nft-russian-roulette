@@ -1,5 +1,5 @@
 <template>
-  <img :src="src" />
+  <img :src="isDead ? '/gravestone.png' : src" />
 </template>
 
 <script>
@@ -10,7 +10,7 @@ import * as config from "../config.js";
 
 export default {
   name: "NFT",
-  props: ["contractAddress", "tokenID"],
+  props: ["contractAddress", "tokenID", "isDead"],
 
   data() {
     return {

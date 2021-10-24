@@ -128,6 +128,7 @@ export default {
         signer
       );
       const event = rouletteContract.interface.parseLog(receipt.logs[2]);
+      console.log(event);
       this.$router.push("/status/" + event.args.gameId.toString());
     },
   },
