@@ -1,0 +1,33 @@
+[tool.poetry]
+name = "nft_russian_roulette"
+version = "0.1.0"
+description = ""
+authors = ["Degen Apes <apes@degen-apes.lol>"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+fastapi = "^0.70.0"
+web3 = "^5.24.0"
+rq = "^1.10.0"
+click = "^8.0.3"
+structlog = "^21.2.0"
+uvicorn = "^0.15.0"
+redis = "^3.5.3"
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.2"
+black = "^21.9b0"
+isort = "^5.9.3"
+flake8 = "^4.0.1"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 99
+
+[tool.isort]
+src_paths = ["src"]
+line_length = 99
+profile = "black"

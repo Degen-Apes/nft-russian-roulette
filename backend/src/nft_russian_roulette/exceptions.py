@@ -1,0 +1,2 @@
+class NFTRRException(Exception):
+    pass
