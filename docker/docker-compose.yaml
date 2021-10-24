@@ -8,6 +8,8 @@ services:
     image: backend
     ports:
       - 8000:8000
+    environment:
+      NFTRR_REDIS_HOST: redis
     command:
       - uvicorn
       - --host
