@@ -95,7 +95,7 @@ contract Roulette is VRFConsumerBase {
             // Only receive gameID means that game has started
             uint256 gameId = abi.decode(data, (uint256));
             acceptChallenge(from, IERC721(msg.sender), tokenId, gameId);
-        } else if (data.length == 52) {
+        } else if (data.length == 64) {
             // Receive token address and token id if game didn't start
             (address _theirTokenAddress, uint256 _theirTokenId) = abi.decode(
                 data,
