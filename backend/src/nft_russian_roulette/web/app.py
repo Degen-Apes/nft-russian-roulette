@@ -1,6 +1,27 @@
-from fastapi import Depends, FastAPI, Path
+from typing import Optional
+
+from fastapi import Depends, FastAPI, HTTPException, Path
+from nft_russian_roulette.constants import (IMAGE_GRAVESTONE_PATH,
+                                            IMAGE_SURVIVED_PATH,
+                                            SURVIVED_TAG_REDIS_KEY_TEMPLATE)
+from nft_russian_roulette.utils import get_redis_from_env
 from nft_russian_roulette.web.models import EthAddress
-from starlette.responses import HTMLResponse
+from redis import Redis
+from starlette.requests import Request
+from starlette.responses import HTMLResponse, Response
+from structlog import get_logger
+
+log = get_logger(__name__)
+
+_REDIS: Optional[Redis] = None
+
+
+def get_redis() -> Redis:
+    global _REDIS
+    if _REDIS is None:
+        _REDIS = get_redis_from_env()
+    return _REDIS
+
 
 app = FastAPI()
 
@@ -11,5 +32,49 @@ def index():
 
 
 @app.get("/tag/{address}/{token_id}")
-def metadata(address: EthAddress = Depends(EthAddress.depends), token_id: str = Path(...)):
-    return {"nft_contract": address.address, "token_id": token_id}
+def nftag(
+    address: EthAddress = Depends(EthAddress.depends),
+    token_id: str = Path(...),
+    request: Request = ...,
+):
+    redis = get_redis()
+    survived_count_key = SURVIVED_TAG_REDIS_KEY_TEMPLATE.format(
+        token_contract_address=address.address, token_id=token_id
+    )
+    survived_count = redis.get(survived_count_key)
+
+    log.debug(
+        "Survived count", token_address=address.address, token_id=token_id, count=survived_count
+    )
+
+    if not survived_count:
+        raise HTTPException(status_code=404, detail="Nothing found")
+
+    return {
+        "description": "NFT Russian Roulette Survivor",
+        "image": f"{request.url.scheme}://{request.url.netloc}/image/survived",
+        "name": f"NFTRR Survivor {address.address}:{token_id}",
+        "attributes": [
+            {
+                "display_type": "number",
+                "trait_type": "Rounds Survived",
+                "value": redis.get(survived_count_key),
+            }
+        ],
+    }
+
+
+@app.get("/gravestone/{token_id}")
+def gravestone(token_id: str = Path(...), request: Request = ...):
+    redis = get_redis()
+
+
+@app.get("/image/{kind}")
+def image_survived(kind: str):
+    if kind == "survived":
+        image = IMAGE_SURVIVED_PATH.read_bytes()
+    elif kind == "gravestone":
+        image = IMAGE_GRAVESTONE_PATH.read_bytes()
+    else:
+        raise HTTPException(status_code=404)
+    return Response(image, media_type="image/png")
