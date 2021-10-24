@@ -41,6 +41,10 @@
       />
     </div>
 
+    <div v-if="gameFinished" class="flex justify-center">
+      <p>Game over</p>
+    </div>
+
     <div v-if="!account" class="flex justify-center">
       <ConnectBtn @connected="onConnected" />
     </div>
@@ -136,7 +140,7 @@ export default {
           } else if (this.player1Survived) {
             return PLAYER_STATE.HAS_SURVIVED_NOT_WITHDRAWN;
           } else {
-            return PLAYER_STATE.HAS_SURVIVED_WITHDRAWN;
+            return PLAYER_STATE.HAS_DIED_NOT_WITHDRAWN;
           }
         case GAME_STATE.TURN_OF_PLAYER2:
           return PLAYER_STATE.WAITING_FOR_OPPONENT;
@@ -165,11 +169,17 @@ export default {
           } else if (this.player2Survived) {
             return PLAYER_STATE.HAS_SURVIVED_NOT_WITHDRAWN;
           } else {
-            return PLAYER_STATE.HAS_SURVIVED_WITHDRAWN;
+            return PLAYER_STATE.HAS_DIED_NOT_WITHDRAWN;
           }
         case GAME_STATE.ENDED:
           return null;
       }
+    },
+    gameFinished() {
+      if (!this.gameState) {
+        return null;
+      }
+      return this.gameState.state === GAME_STATE.ENDED;
     },
   },
 
@@ -202,13 +212,18 @@ export default {
           }
         }
         if (this.gameState.state >= GAME_STATE.PLAYER1_AWAIT_RANDOMNESS) {
-          try {
-            this.player2Survived = await contract.didPlayerSurvive(
-              this.gameID,
-              1
-            );
-          } catch {
-            this.player2Survived = null;
+          if (this.player1Survived) {
+            try {
+              this.player2Survived = await contract.didPlayerSurvive(
+                this.gameID,
+                1
+              );
+              console.log(this.player2Survived);
+            } catch {
+              this.player2Survived = null;
+            }
+          } else {
+            this.player2Survived = true;
           }
         }
       },
