@@ -6,7 +6,7 @@ async function main() {
     console.log("Account balance:", (await deployer.getBalance()).toString());
 
     const Gravestone = await ethers.getContractFactory("Gravestone");
-    const gravestone = await Gravestone.deploy('Gravestone', 'GRST', 'https://nftrr.degen-apes.lol/gravestone/');
+    const gravestone = await Gravestone.deploy('Gravestone', 'GRST', 'https://api.nftrr.degen-apes.lol/gravestone/');
     console.log("Gravestone address:", gravestone.address);
 
     const RussianRoulette = await ethers.getContractFactory("Roulette");
@@ -18,9 +18,10 @@ async function main() {
     console.log('Minter role granted to Roulette');
 
     const emitTx = await roulette.killEvent("0x00A33749a231f2e9c10deFE83403a67148D38438", "0x0000000000000000000000000000000000000001", 1, 1);
-    let res = await emitTx.wait();
+    await emitTx.wait();
 
-    console.log('Gravestone minted and Event emitted', res);
+    console.log('Gravestone minted and Event emitted');
+    console.log('Token URI', await gravestone.tokenURI(0));
   }
 
   main()
