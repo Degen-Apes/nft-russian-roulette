@@ -9,22 +9,24 @@
         :tokenID="player1TokenID"
       />
       <NFT
-        :contractAddress="player1TokenContractAddress"
-        :tokenID="player1TokenID"
+        :contractAddress="player2TokenContractAddress"
+        :tokenID="player2TokenID"
       />
       <PlayerStatus
         :playerIndex="1"
         :gameID="gameID"
         :state="player1State"
-        :userIsPlayer="signer && account === player1Address"
-        :signer="signer"
+        :tokenContractAddress="player1TokenContractAddress"
+        :tokenID="player1TokenID"
+        :userIsPlayer="true"
       />
       <PlayerStatus
         :playerIndex="2"
         :gameID="gameID"
         :state="player2State"
-        :userIsPlayer="signer && account === player1Address"
-        :signer="signer"
+        :tokenContractAddress="player2TokenContractAddress"
+        :tokenID="player2TokenID"
+        :userIsPlayer="true"
       />
     </div>
 
@@ -44,6 +46,12 @@ import NFT from "./NFT.vue";
 
 export const GAME_STATE = {
   CHALLENGED: 0,
+  TURN_OF_PLAYER1: 1,
+  PLAYER1_AWAIT_RANDOMNESS: 2,
+  TURN_OF_PLAYER2: 3,
+  PLAYER2_AWAIT_RANDOMNESS: 4,
+  CANCELLED: 5,
+  ENDED: 6,
 };
 
 export default {
@@ -60,6 +68,8 @@ export default {
       gameID: null,
       signer: null,
       gameState: null,
+      player1Survived: null,
+      player2Survived: null,
     };
   },
   computed: {
@@ -101,22 +111,36 @@ export default {
     },
 
     player1State() {
-      switch (this.gameState) {
+      if (!this.gameState) {
+        return null;
+      }
+      switch (this.gameState.state) {
         case GAME_STATE.CHALLENGED:
           return PLAYER_STATE.WAITING_FOR_OPPONENT;
         case GAME_STATE.TURN_OF_PLAYER1:
           return PLAYER_STATE.WAITING_FOR_TRIGGER;
         case GAME_STATE.PLAYER1_AWAIT_RANDOMNESS:
-          return PLAYER_STATE.WAITING_FOR_RANDOMNESS;
+          if (this.player1Survived === null) {
+            return PLAYER_STATE.WAITING_FOR_RANDOMNESS;
+          } else if (this.player1Survived) {
+            return PLAYER_STATE.HAS_SURVIVED_NOT_WITHDRAWN;
+          } else {
+            return PLAYER_STATE.HAS_SURVIVED_WITHDRAWN;
+          }
         case GAME_STATE.TURN_OF_PLAYER2:
           return PLAYER_STATE.WAITING_FOR_OPPONENT;
         case GAME_STATE.PLAYER2_AWAIT_RANDOMNESS:
           return PLAYER_STATE.WAITING_FOR_OPPONENT;
+        case GAME_STATE.ENDED:
+          return null;
       }
     },
     player2State() {
-      switch (this.gameState) {
-        case PLAYER_STATE.CHALLENGED:
+      if (!this.gameState) {
+        return null;
+      }
+      switch (this.gameState.state) {
+        case GAME_STATE.CHALLENGED:
           return PLAYER_STATE.WAITING_FOR_ACCEPTANCE;
         case GAME_STATE.TURN_OF_PLAYER1:
           return PLAYER_STATE.WAITING_FOR_OPPONENT;
@@ -125,15 +149,16 @@ export default {
         case GAME_STATE.TURN_OF_PLAYER2:
           return PLAYER_STATE.WAITING_FOR_TRIGGER;
         case GAME_STATE.PLAYER2_AWAIT_RANDOMNESS:
-          return PLAYER_STATE.WAITING_FOR_RANDOMNESS;
+          if (this.player2Survived === null) {
+            return PLAYER_STATE.WAITING_FOR_RANDOMNESS;
+          } else if (this.player2Survived) {
+            return PLAYER_STATE.HAS_SURVIVED_NOT_WITHDRAWN;
+          } else {
+            return PLAYER_STATE.HAS_SURVIVED_WITHDRAWN;
+          }
+        case GAME_STATE.ENDED:
+          return null;
       }
-    },
-
-    async userAddress() {
-      if (!this.signer) {
-        return null;
-      }
-      return await this.signer.getAddress();
     },
   },
 
@@ -153,17 +178,31 @@ export default {
           provider
         );
         this.gameState = await contract.games(this.gameID);
+        try {
+          this.player1Survived = await contract.didPlayerSurvive(
+            this.gameID,
+            0
+          );
+        } catch {
+          this.player1Survived = null;
+        }
+        try {
+          this.player2Survived = await contract.didPlayerSurvive(
+            this.gameID,
+            1
+          );
+        } catch {
+          this.player2Survived = null;
+        }
       },
     },
   },
 
   methods: {
     async onConnected(account) {
-      this.account = account;
+      this.account = ethers.utils.getAddress(account);
       const provider = new ethers.providers.Web3Provider(window.ethereum);
-      this.signer = provider.getSigner();
-
-      // TODO: check if user is player 1 or 2
+      this.signer = await provider.getSigner();
     },
   },
 };

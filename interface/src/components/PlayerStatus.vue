@@ -15,16 +15,19 @@
       >
         Pull trigger
       </Btn>
+      <p v-else-if="state === PLAYER_STATE.WAITING_FOR_RANDOMNESS">
+        waiting for result...
+      </p>
       <Btn
         v-else-if="state == PLAYER_STATE.HAS_DIED_NOT_WITHDRAWN"
-        @click="clickPickUpGravestone"
+        @click="clickEvaluate"
         :inProgress="inProgress"
       >
         Pick up gravestone
       </Btn>
       <Btn
         v-else-if="state == PLAYER_STATE.HAS_SURVIVED_NOT_WITHDRAWN"
-        @click="clickWithdrawSurvivor"
+        @click="clickEvaluate"
         :inProgress="inProgress"
       >
         Withdraw survivor
@@ -34,6 +37,10 @@
 </template>
 
 <script>
+import { ethers } from "ethers";
+import erc721ABI from "../assets/erc721ABI.json";
+import rouletteABI from "../assets/rouletteABI.json";
+import * as config from "../config.js";
 import Btn from "./Btn.vue";
 import NFT from "./NFT.vue";
 
@@ -57,7 +64,6 @@ export default {
     "tokenContractAddress",
     "tokenID",
     "userIsPlayer",
-    "signer",
   ],
 
   components: {
@@ -93,11 +99,13 @@ export default {
       }
     },
     async acceptChallenge() {
-      const signerAddress = await this.signer.getAddress();
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = await provider.getSigner();
+      const signerAddress = await signer.getAddress();
       const tokenContract = new ethers.Contract(
         this.tokenContractAddress,
         erc721ABI,
-        this.signer
+        signer
       );
       const tx = await tokenContract[
         "safeTransferFrom(address,address,uint256,bytes)"
@@ -108,6 +116,55 @@ export default {
         this.acceptanceTransferCallData
       );
       await tx.wait();
+      window.location.reload();
+    },
+
+    async clickPullTrigger() {
+      if (this.inProgress) {
+        return;
+      }
+      this.inProgress = true;
+      try {
+        await this.pullTrigger();
+      } finally {
+        this.inProgress = false;
+      }
+    },
+    async pullTrigger() {
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(
+        config.rouletteContractAddress,
+        rouletteABI,
+        signer
+      );
+      const tx = await contract.pulltrigger(this.gameID);
+      await tx.wait();
+      window.location.reload();
+    },
+
+    async clickEvaluate() {
+      if (this.inProgress) {
+        return;
+      }
+      this.inProgress = true;
+      try {
+        await this.evaluate();
+      } finally {
+        this.inProgress = false;
+      }
+    },
+    async evaluate() {
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(
+        config.rouletteContractAddress,
+        rouletteABI,
+        signer
+      );
+      const tx = await contract.evaluateOutcome(this.gameID);
+      await tx.wait();
+      window.location.reload();
     },
   },
 };
