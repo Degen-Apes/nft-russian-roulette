@@ -37,6 +37,8 @@ services:
 
   worker:
     image: backend
+    environment:
+      NFTRR_REDIS_HOST: redis
     command:
       - rq
       - worker
