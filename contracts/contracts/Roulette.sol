@@ -1,6 +1,7 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
+import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
@@ -13,6 +14,8 @@ contract Roulette is VRFConsumerBase {
     Counters.Counter public gameIds;
     uint32 countdownTime = 7 days;
     address burnAddress = 0x0000000000000000000000000000000000000000;
+    ERC721 gravestoneToken;
+
     // CHAINLINK STUFF
     uint256 private constant ROLL_IN_PROGRESS = 42;
     bytes32 internal keyHash;
@@ -56,7 +59,7 @@ contract Roulette is VRFConsumerBase {
         PLAYER1AWAITRESULT,
         TURNOFPLAYER2,
         PLAYER2AWAITRESULT,
-        CANCELLED, 
+        CANCELLED,
         ENDED
     }
 
@@ -67,18 +70,19 @@ contract Roulette is VRFConsumerBase {
     // ======= CONSTRUCTOR =====
     /**
      * Constructor inherits VRFConsumerBase
-     * 
+     *
      * Network: Rinkeby
      * Chainlink VRF Coordinator address: 0xb3dCcb4Cf7a26f6cf6B120Cf5A73875B7BBc655B
      * LINK token address:                0x01BE23585060835E02B77ef475b0Cc51aA1e0709
      * Key Hash: 0x2ed0feb3e7fd2022120aa84fab1945545a9f2ffc9076fd6156fa96eaff4c1311
      */
-    constructor() 
+    constructor(ERC721 gravestoneToken_)
         VRFConsumerBase(
-            0xb3dCcb4Cf7a26f6cf6B120Cf5A73875B7BBc655B, // VRF Coordinator 
+            0xb3dCcb4Cf7a26f6cf6B120Cf5A73875B7BBc655B, // VRF Coordinator
             0x01BE23585060835E02B77ef475b0Cc51aA1e0709  // LINK Token
         )
     {
+        gravestoneToken = gravestoneToken_;
         keyHash = 0x2ed0feb3e7fd2022120aa84fab1945545a9f2ffc9076fd6156fa96eaff4c1311;
         fee = 0.1 * 10 ** 18; // 0.1 LINK
     }
@@ -161,7 +165,7 @@ contract Roulette is VRFConsumerBase {
         emit ChallengeAccepted(gameId);
     }
 
-    function pulltrigger(uint gameId) public returns (bytes32 requestId) {       
+    function pulltrigger(uint gameId) public returns (bytes32 requestId) {
         require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK to pay fee");
         Game storage game = games[gameId];
         if (game.state == GameState.TURNOFPLAYER1) {
@@ -202,7 +206,7 @@ contract Roulette is VRFConsumerBase {
             return false;
         } else {
             return true;
-        }     
+        }
 
     }
 
@@ -223,7 +227,7 @@ contract Roulette is VRFConsumerBase {
                 tokenContract.safeTransferFrom(address(this), game.player1, game.tokenId1);
                 game.state = GameState.TURNOFPLAYER2;
                 // mintReward();
-                emit PulledTrigger(game.tokenAddress1, game.tokenId1, gameId, true);    
+                emit PulledTrigger(game.tokenAddress1, game.tokenId1, gameId, true);
             }
         } else if (game.state == GameState.PLAYER2AWAITRESULT) {
             require(msg.sender == game.player2);
@@ -232,7 +236,7 @@ contract Roulette is VRFConsumerBase {
                 tokenContract.safeTransferFrom(address(this), game.player2, game.tokenId2);
                 game.state = GameState.ENDED;
                 // mintReward();
-                emit PulledTrigger(game.tokenAddress2, game.tokenId2, gameId, true);  
+                emit PulledTrigger(game.tokenAddress2, game.tokenId2, gameId, true);
             } else {
                 game.player2Survived = false;
                 tokenContract.safeTransferFrom(address(this), burnAddress, game.tokenId2);
@@ -254,7 +258,7 @@ contract Roulette is VRFConsumerBase {
     }
 
     function chickenOut() public payable {}
-        
+
     function _triggerCooldown(Game storage game) internal {
         game.countdownTimer = uint32(block.timestamp + countdownTime);
     }
@@ -263,8 +267,8 @@ contract Roulette is VRFConsumerBase {
         return (game.countdownTimer < block.timestamp);
     }
 
-    /** 
-     * Requests randomness 
+    /**
+     * Requests randomness
      */
     function getRandomNumber() public returns (bytes32 requestId) {
         require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK - fill contract with faucet");
@@ -283,5 +287,5 @@ contract Roulette is VRFConsumerBase {
         uint rand = uint(keccak256(abi.encodePacked(msg.sender, block.timestamp)));
         fulfillRandomness(reqId, rand % 6);
     }
-    
+
 }
